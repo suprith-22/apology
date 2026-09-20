@@ -332,7 +332,7 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        audioRef.current = new Audio('/singari.mp3');
+        audioRef.current = new Audio('/song.mp3');
         audioRef.current.loop = true;
         audioRef.current.volume = 0.5;
         const play = () => {
