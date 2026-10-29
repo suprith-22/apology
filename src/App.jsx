@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Heart, Moon, Sparkles, Feather, Music, ChevronRight, ChevronLeft, Send, Gift, Star } from 'lucide-react';
+import { Heart, Sparkles, Feather, Music, ChevronRight, ChevronLeft, Send, Gift, Code } from 'lucide-react';
+import TechPage from './TechPage.jsx';
 
 // --- CONFIGURATION ---
 const PHOTOS = [
     "/photo1.jpg",
     "/photo2.jpg",
-    "/photo3.jpg"
+    "/new-zealand.jpg"
 ];
 
-const GEMINI_API_KEY = "AQ.Ab8RN6LqjvfA3yP6MVs6eDyIz9xKfLxT3pOrkLMvQNYlx-MHSA";
+// Set VITE_GEMINI_API_KEY in .env.local (git-ignored) — never commit the key
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+// Keeps every AI-written line sweet, sincere and pressure-free
+const TONE = " Context: they are colleagues at Aiden, and she has clearly said she is not looking to date anyone and wants to focus on her first project. He fully accepts and agrees with that. Keep it gentle, warm and respectful — not romantic, no pressure, no guilt-tripping, no hoping for a relationship, no asking her to reply.";
 
 const THEME = {
     bg: "bg-[#0a0710]",
@@ -46,7 +51,7 @@ const callGemini = async (prompt, fallback) => {
 
 // --- AMBIENT LAYERS ---
 
-// Dim, sorrowful night sky with a slow moon glow
+// Soft night sky with a gentle glow
 const StarField = () => {
     const [stars, setStars] = useState([]);
     useEffect(() => {
@@ -72,23 +77,7 @@ const StarField = () => {
     );
 };
 
-// Falling rain (the ache) + drifting petals (fragile hope)
-const Rain = () => {
-    const [drops] = useState(() => Array.from({ length: 70 }).map((_, i) => ({
-        id: i, x: Math.random() * 100, delay: Math.random() * 5 + 's',
-        duration: (Math.random() * 0.6 + 0.7) + 's', height: Math.random() * 40 + 30, opacity: Math.random() * 0.25 + 0.05
-    })));
-    return (
-        <div className="fixed inset-0 pointer-events-none z-[5] overflow-hidden">
-            {drops.map((d) => (
-                <div key={d.id} className="absolute top-[-15%] w-px bg-gradient-to-b from-transparent via-rose-100/50 to-transparent"
-                    style={{ left: `${d.x}%`, height: `${d.height}px`, opacity: d.opacity, animation: `rainfall ${d.duration} linear ${d.delay} infinite` }} />
-            ))}
-            <style>{`@keyframes rainfall {0%{transform:translateY(-15vh)}100%{transform:translateY(120vh)}}`}</style>
-        </div>
-    );
-};
-
+// Drifting petals
 const Petals = () => {
     const [petals, setPetals] = useState([]);
     useEffect(() => {
@@ -133,47 +122,64 @@ const CursorGlow = () => {
 };
 
 // --- PHOTO GALLERY ---
+// A fanned deck of polaroids: every photo is visible, the front one glides to centre
+const CARD_SLOTS = [
+    { transform: 'translateX(-50%) rotate(-1deg) scale(1)', zIndex: 30 },
+    { transform: 'translateX(-10%) rotate(8deg) scale(.84)', zIndex: 20 },
+    { transform: 'translateX(-90%) rotate(-9deg) scale(.84)', zIndex: 10 },
+];
+
 const PhotoGallery = () => {
-    const [i, setI] = useState(0);
-    const captions = ["The way you used to smile", "Moments I'd give anything to keep", "My favourite person, always"];
+    const [front, setFront] = useState(0);
+    const [paused, setPaused] = useState(false);
+    const captions = ["Sorry for all the chaos, Tanvi 🙈", "Same admiration — minus the obsession", "Peace and calm, just like you deserve 🏔️"];
+    useEffect(() => {
+        if (paused) return;
+        const t = setInterval(() => setFront((f) => (f + 1) % PHOTOS.length), 4500);
+        return () => clearInterval(t);
+    }, [paused]);
+    const step = (d) => setFront((f) => (f + d + PHOTOS.length) % PHOTOS.length);
     return (
-        <div className="relative w-full max-w-md mx-auto aspect-[3/4] group perspective-1000">
-            <div className="relative w-full h-full bg-[#f5efe6] p-4 pb-16 shadow-[0_20px_60px_rgba(0,0,0,0.6)] transform transition-all duration-500 -rotate-1 hover:rotate-0 rounded-sm">
-                <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/10 to-purple-900/10 pointer-events-none" />
-                <div className="relative w-full h-full overflow-hidden bg-[#e9e0d4]">
-                    <img src={PHOTOS[i]} alt={`Memory ${i + 1}`} className="w-full h-full object-cover transition-opacity duration-500 sepia-[0.15]" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                </div>
-                <div className="absolute bottom-4 left-0 w-full text-center px-4">
-                    <p className={`${THEME.fontScript} text-2xl text-stone-700`}>{captions[i]}</p>
-                </div>
-                <button onClick={() => setI((p) => (p - 1 + PHOTOS.length) % PHOTOS.length)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-stone-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ChevronLeft size={20} />
-                </button>
-                <button onClick={() => setI((p) => (p + 1) % PHOTOS.length)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-stone-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ChevronRight size={20} />
-                </button>
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="w-full max-w-md mx-auto" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+            <div className="relative w-full" style={{ aspectRatio: '1 / 0.92' }}>
+                {PHOTOS.map((src, idx) => {
+                    const slot = CARD_SLOTS[(idx - front + PHOTOS.length) % PHOTOS.length];
+                    const isFront = idx === front;
+                    return (
+                        <button key={src} onClick={() => setFront(idx)} aria-label={`Show photo ${idx + 1}`}
+                            className="absolute left-1/2 top-0 w-[58%] bg-[#f5efe6] p-3 pb-12 rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.55)] origin-bottom transition-all duration-700 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1"
+                            style={{ transform: slot.transform, zIndex: slot.zIndex, filter: isFront ? 'none' : 'brightness(.82)' }}>
+                            <div className="w-full aspect-[3/4] overflow-hidden bg-[#e9e0d4]">
+                                <img src={src} alt={`Memory ${idx + 1}`} className="w-full h-full object-cover sepia-[0.12]" draggable={false} />
+                            </div>
+                            <p className={`${THEME.fontScript} absolute bottom-2.5 left-0 w-full text-center px-2 text-stone-700 leading-tight transition-all duration-500 ${isFront ? 'text-lg' : 'text-sm opacity-70'}`}>{captions[idx]}</p>
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-4">
+                <button onClick={() => step(-1)} aria-label="Previous photo" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-rose-100 transition-colors"><ChevronLeft size={18} /></button>
+                <div className="flex gap-2">
                     {PHOTOS.map((_, idx) => (
-                        <div key={idx} className={`w-2 h-2 rounded-full transition-colors ${idx === i ? 'bg-rose-300' : 'bg-stone-700'}`} />
+                        <button key={idx} onClick={() => setFront(idx)} aria-label={`Go to photo ${idx + 1}`}
+                            className={`h-2 rounded-full transition-all duration-500 ${idx === front ? 'w-6 bg-rose-300' : 'w-2 bg-rose-200/30'}`} />
                     ))}
                 </div>
+                <button onClick={() => step(1)} aria-label="Next photo" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-rose-100 transition-colors"><ChevronRight size={18} /></button>
             </div>
         </div>
     );
 };
 
-// --- "A whisper from my heart" (live Gemini) ---
+// --- "A tiny sorry note" (live Gemini) ---
 const GeminiMessage = () => {
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const generate = async () => {
         setLoading(true); setMessage("");
         const text = await callGemini(
-            "Write a short, heartfelt and gently sorrowful 2-sentence message for a girl named Akshu, expressing how deeply she is missed and cherished. Tender, poetic, full of quiet longing and hope.",
-            "Even in the quietest, saddest hours, my heart keeps finding its way back to you. You are missed more than these words could ever hold."
+            "Write a short, cute and sincere 2-sentence apology from Suprith to Tanvi. He got over-excited, called her too many times and made her uncomfortable — he is truly sorry and completely respects her decision." + TONE,
+            "I'm sorry I let my excitement get louder than your comfort, Tanvi. You deserve calm and space to focus, and I fully respect that."
         );
         setMessage(text); setLoading(false);
     };
@@ -185,7 +191,7 @@ const GeminiMessage = () => {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-400/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                     <span className={`${THEME.fontBody} flex items-center justify-center gap-2 text-rose-100/80 group-hover:text-rose-50 transition-colors text-lg tracking-wide`}>
                         {loading ? <Sparkles className="animate-spin" size={18} /> : <Heart size={18} />}
-                        {loading ? "Searching my heart..." : "A whisper from my heart"}
+                        {loading ? "Writing it carefully..." : "A tiny sorry note"}
                     </span>
                 </button>
             ) : (
@@ -194,7 +200,7 @@ const GeminiMessage = () => {
                     <p className={`${THEME.fontBody} text-rose-100/90 italic leading-relaxed text-center text-lg`}>"{message}"</p>
                     <div className="mt-4 flex justify-center">
                         <button onClick={generate} className="text-xs text-rose-400/70 hover:text-rose-300 flex items-center gap-1 uppercase tracking-widest">
-                            <Heart size={12} /> Another whisper
+                            <Heart size={12} /> One more note
                         </button>
                     </div>
                 </div>
@@ -216,12 +222,12 @@ const Typewriter = ({ text, delay = 40, onComplete }) => {
     return <span>{displayed}</span>;
 };
 
-// --- THE SURPRISE: pressable heart that generates a live gift each time ---
+// --- THE SURPRISE: pressable heart that generates a live note each time ---
 const GIFTS = [
-    { key: 'thanks', label: 'A thank you', prompt: "Write a short, deeply heartfelt 2-sentence thank-you note to a girl named Akshu — thank her for her patience, her love, and for still being here. Warm, sincere, a little emotional." },
-    { key: 'reason', label: 'A reason I love you', prompt: "Write one short, vivid, poetic sentence naming a specific tender reason a boy adores a girl named Akshu — her laugh, her eyes, the way she cares. Make it feel personal and sincere." },
-    { key: 'promise', label: 'A promise', prompt: "Write a short, sincere 2-sentence promise from a boy to a girl named Akshu about how he will love and treat her better from now on. Gentle, honest, hopeful." },
-    { key: 'smile', label: 'Something to make you smile', prompt: "Write one short, sweet, slightly playful line to make a girl named Akshu smile through her sadness. Loving and warm, not a joke that mocks — just tender and cute." },
+    { key: 'sorry', label: 'A tiny sorry', prompt: "Write one short, cute, sincere sentence from Suprith apologising to Tanvi for calling her too many times and getting over-excited." + TONE },
+    { key: 'promise', label: 'A promise', prompt: "Write a short, sincere 2-sentence promise from Suprith to Tanvi: he respects her decision, will give her space to focus on her first project, and will never make her feel pressured again." + TONE },
+    { key: 'thanks', label: 'A thank you', prompt: "Write a short, warm 2-sentence thank-you from Suprith to Tanvi for being honest with him, and for still valuing the bond they built as colleagues at Aiden." + TONE },
+    { key: 'smile', label: 'Something to make you smile', prompt: "Write one short, sweet, slightly self-teasing line from Suprith to make Tanvi smile — for example joking that his phone is now on a strict no-spam-calling diet." + TONE },
 ];
 
 const SurpriseRoom = () => {
@@ -250,10 +256,10 @@ const SurpriseRoom = () => {
         const pick = GIFTS[count % GIFTS.length];
         setCount((c) => c + 1);
         const fallbacks = {
-            thanks: "Thank you for staying, for your patience, and for loving me even when I made it hard. I don't say it enough, but you are everything.",
-            reason: "I love the way your whole face lights up when you laugh — it feels like the world softening just for me.",
-            promise: "I promise to listen more and speak softer, to protect your smile instead of dimming it. You will never doubt how loved you are again.",
-            smile: "You're my favourite hello and my hardest goodbye — and yes, I'm hopelessly, ridiculously yours.",
+            sorry: "Sorry for turning your phone into a missed-call museum, Tanvi — that was way too much, and it's completely on me. 🙈",
+            promise: "I promise to respect your decision and give you all the space you need to shine in your first project. No pressure, ever again.",
+            thanks: "Thank you for being honest with me, even when it wasn't easy — and for still valuing the bond we have. That means a lot.",
+            smile: "Update: my phone has been put on a strict no-spam-calling diet. It's sulking, but it's learning. 📵",
         };
         const text = await callGemini(pick.prompt, fallbacks[pick.key]);
         setGift({ label: pick.label, text });
@@ -262,10 +268,10 @@ const SurpriseRoom = () => {
 
     return (
         <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center animate-in fade-in duration-1000">
-            <p className="text-sm text-rose-200/50 font-light tracking-[0.35em] uppercase mb-3">A little surprise, just for you</p>
-            <h2 className={`${THEME.fontHeading} italic text-4xl md:text-6xl text-rose-50 mb-4`}>Press my heart, Akshu</h2>
+            <p className="text-sm text-rose-200/50 font-light tracking-[0.35em] uppercase mb-3">A little something, just for you</p>
+            <h2 className={`${THEME.fontHeading} italic text-4xl md:text-6xl text-rose-50 mb-4`}>Press the sorry heart, Tanvi</h2>
             <p className={`${THEME.fontBody} text-rose-100/65 text-lg mb-10 max-w-lg`}>
-                Each time you press it, it whispers something new I've been holding onto — a thank you, a reason, a promise.
+                Each press gives you something small — a sorry, a promise, a thank you, or just something to make you smile.
             </p>
 
             {/* Heart button + burst */}
@@ -284,11 +290,11 @@ const SurpriseRoom = () => {
                 </button>
             </div>
 
-            {/* Generated gift card */}
+            {/* Generated note card */}
             <div className="min-h-[130px] w-full flex items-center justify-center">
                 {loading && (
                     <p className={`${THEME.fontBody} text-rose-200/70 italic text-lg flex items-center gap-2`}>
-                        <Sparkles className="animate-spin" size={18} /> unfolding something for you...
+                        <Sparkles className="animate-spin" size={18} /> writing something for you...
                     </p>
                 )}
                 {!loading && gift && (
@@ -299,9 +305,12 @@ const SurpriseRoom = () => {
                     </div>
                 )}
                 {!loading && !gift && (
-                    <p className={`${THEME.fontBody} text-rose-200/40 italic text-lg`}>go on… I promise it's sweet 💗</p>
+                    <p className={`${THEME.fontBody} text-rose-200/40 italic text-lg`}>go on… this one won't call you, I promise 🙈</p>
                 )}
             </div>
+            <p className={`${THEME.fontBody} mt-10 text-rose-100/50 italic text-base max-w-md`}>
+                No reply needed. I just wanted you to know I'm truly sorry. 🌸
+            </p>
             <style>{`@keyframes heartFly {0%{transform:translate(-50%,-50%) scale(.2);opacity:0}15%{opacity:1}100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) rotate(var(--rot)) scale(var(--sc));opacity:0}}`}</style>
         </div>
     );
@@ -319,7 +328,8 @@ const StepDots = ({ step, setStep }) => (
 
 // --- MAIN APP ---
 export default function App() {
-    const [step, setStep] = useState(0); // 0 intro, 1 gallery, 2 letter, 3 surprise
+    const [step, setStep] = useState(0); // 0 intro, 1 what happened, 2 letter, 3 surprise
+    const [view, setView] = useState(() => (window.location.hash === '#tech' ? 'tech' : 'story')); // 'story' | 'tech'
     const [audioPlaying, setAudioPlaying] = useState(false);
     const audioRef = useRef(null);
 
@@ -332,9 +342,9 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        audioRef.current = new Audio('/song.mp3');
+        audioRef.current = new Audio('/music-box.wav');
         audioRef.current.loop = true;
-        audioRef.current.volume = 0.5;
+        audioRef.current.volume = 0.16;
         const play = () => {
             if (audioRef.current && audioRef.current.paused) {
                 audioRef.current.play().then(() => setAudioPlaying(true)).catch(e => console.log("Autoplay prevented", e));
@@ -356,59 +366,78 @@ export default function App() {
             <div className="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(244,114,182,0.08),transparent_60%)]" />
 
             <StarField />
-            <Rain />
             <Petals />
             <CursorGlow />
 
             <div className="fixed inset-0 z-30 pointer-events-none shadow-[inset_0_0_200px_80px_rgba(0,0,0,0.7)]" />
 
-            <button onClick={toggleAudio} className="fixed top-6 right-6 z-50 text-rose-100/40 hover:text-rose-100 transition-colors" aria-label="Toggle music">
+            {/* Dusk-rose canvas with drifting colour blobs for the technical page */}
+            <div className={`fixed inset-0 z-[35] pointer-events-none overflow-hidden bg-gradient-to-br from-[#4a1942] via-[#6a2860] to-[#35225f] transition-opacity duration-700 ${view === 'tech' ? 'opacity-100' : 'opacity-0'}`}>
+                <div className="absolute -top-40 -left-32 w-[640px] h-[640px] rounded-full bg-pink-500/30 blur-[130px] animate-[blobA_18s_ease-in-out_infinite]" />
+                <div className="absolute top-1/3 -right-40 w-[560px] h-[560px] rounded-full bg-fuchsia-500/25 blur-[130px] animate-[blobB_22s_ease-in-out_infinite]" />
+                <div className="absolute -bottom-48 left-1/4 w-[620px] h-[620px] rounded-full bg-violet-500/25 blur-[140px] animate-[blobA_26s_ease-in-out_infinite_reverse]" />
+                <style>{`
+                    @keyframes blobA {0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(120px,80px) scale(1.15)}}
+                    @keyframes blobB {0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-140px,-60px) scale(1.1)}}
+                `}</style>
+            </div>
+
+            <button onClick={toggleAudio} className={`fixed top-6 right-6 z-50 transition-colors ${view === 'tech' ? 'text-rose-100/60 hover:text-white' : 'text-rose-100/40 hover:text-rose-100'}`} aria-label="Toggle music">
                 {audioPlaying ? <Music className="animate-pulse" /> : <Music className="opacity-50" />}
             </button>
 
+            {view === 'story' && (
+                <button onClick={() => { setView('tech'); window.scrollTo(0, 0); }}
+                    className="group fixed top-4 left-4 sm:top-5 sm:left-5 z-50 flex items-center gap-3 px-5 py-3 sm:px-7 sm:py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 text-white font-sans text-base sm:text-lg font-semibold tracking-wide shadow-[0_10px_35px_rgba(244,63,94,0.45)] hover:shadow-[0_14px_45px_rgba(244,63,94,0.65)] hover:scale-105 active:scale-95 transition-all duration-300">
+                    <Code size={22} className="group-hover:rotate-12 transition-transform" /> Technical Explanation
+                </button>
+            )}
+
             <main className="relative z-40 container mx-auto px-6 min-h-screen flex flex-col items-center justify-center py-20">
 
+                {view === 'tech' && <TechPage onBack={() => { setView('story'); window.scrollTo(0, 0); }} />}
+
                 {/* STEP 0: INTRO */}
-                {step === 0 && (
+                {view === 'story' && step === 0 && (
                     <div className="text-center space-y-8 animate-in fade-in zoom-in duration-1000">
                         <div className="relative inline-block">
                             <div className="absolute -inset-2 bg-rose-400/20 rounded-full blur-xl animate-pulse" />
-                            <Moon className="w-12 h-12 text-rose-200/80 mx-auto mb-4 animate-[spin_20s_linear_infinite]" />
+                            <Heart className="w-12 h-12 text-rose-200/80 mx-auto mb-4 animate-pulse" fill="currentColor" />
                         </div>
-                        <p className="text-sm text-rose-200/50 font-light tracking-[0.35em] uppercase">I'm sorry — and I couldn't stay silent</p>
+                        <p className="text-sm text-rose-200/50 font-light tracking-[0.35em] uppercase">A tiny sorry from a slightly too excited boy</p>
                         <h1 className={`${THEME.fontHeading} italic text-5xl md:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-rose-200 via-white to-rose-200 drop-shadow-[0_0_25px_rgba(244,114,182,0.25)]`}>
-                            For My Dearest Akshu
+                            Sorry, Tanvi 🥺
                         </h1>
                         <p className={`${THEME.fontBody} text-lg md:text-xl text-rose-100/60 font-light tracking-wide max-w-md mx-auto`}>
-                            There are things my heart has been aching to say to you...
+                            I know I overdid it. This time, no calls — just a few quiet pages you can read whenever you like.
                         </p>
                         <button onClick={() => setStep(1)}
                             className="mt-12 group relative px-10 py-5 bg-transparent overflow-hidden rounded-full transition-all hover:scale-105">
                             <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-rose-600 via-purple-700 to-rose-600 opacity-25 group-hover:opacity-40 transition-opacity" />
                             <div className="absolute inset-0 border border-rose-200/25 rounded-full" />
-                            <span className={`${THEME.fontBody} relative flex items-center gap-3 text-rose-50 tracking-wider text-lg`}>Please, hear me out <ChevronRight size={20} /></span>
+                            <span className={`${THEME.fontBody} relative flex items-center gap-3 text-rose-50 tracking-wider text-lg`}>Okay, tell me <ChevronRight size={20} /></span>
                         </button>
                     </div>
                 )}
 
-                {/* STEP 1: GALLERY */}
-                {step === 1 && (
+                {/* STEP 1: WHAT HAPPENED */}
+                {view === 'story' && step === 1 && (
                     <div className="w-full max-w-5xl grid md:grid-cols-2 gap-12 items-center animate-in slide-in-from-right duration-700">
                         <div className="order-2 md:order-1 flex flex-col items-center">
                             <PhotoGallery />
                             <GeminiMessage />
                         </div>
                         <div className="order-1 md:order-2 text-center md:text-left space-y-8">
-                            <h2 className={`${THEME.fontHeading} italic text-4xl md:text-6xl text-rose-50`}>I miss the world we had</h2>
+                            <h2 className={`${THEME.fontHeading} italic text-4xl md:text-6xl text-rose-50`}>Okay, I got carried away</h2>
                             <div className={`${THEME.fontBody} space-y-4 text-rose-100/75 text-lg md:text-xl leading-relaxed font-light`}>
-                                <p>Akshu, every time I look at these pictures, my chest tightens. You are not just a part of my life; you were the best part of it, and I let myself forget how rare that is.</p>
-                                <p>Your smile could heal anything, and your happiness meant more to me than my own. It breaks me to know I became the reason for a single tear on this beautiful face.</p>
-                                <p>If you let me, I want to spend the rest of my days undoing that hurt and filling your life with the joy you gave to mine.</p>
+                                <p>Tanvi, in all my excitement — wanting to talk to you, wanting to see you — I went way overboard. Instead of staying calm, I called… and called… and called again. 🙈</p>
+                                <p>It came across as obsessive and disturbing. That wasn't fair to you, and I'm really, really sorry you had to feel that way because of me.</p>
+                                <p>You told me right at the start — understand, and then talk. This time I'm doing exactly that: I've understood, and this is me talking, once, calmly.</p>
                             </div>
                             <div className="pt-8 flex justify-center md:justify-start">
                                 <button onClick={() => setStep(2)}
                                     className={`${THEME.fontBody} flex items-center gap-2 text-rose-200 hover:text-rose-100 transition-colors border-b border-rose-200/30 hover:border-rose-200 pb-1 text-lg`}>
-                                    Read what my heart wrote for you <Feather size={20} />
+                                    Read my proper sorry <Feather size={20} />
                                 </button>
                             </div>
                         </div>
@@ -416,29 +445,39 @@ export default function App() {
                 )}
 
                 {/* STEP 2: LETTER */}
-                {step === 2 && (
+                {view === 'story' && step === 2 && (
                     <div className="w-full max-w-3xl animate-in fade-in duration-1000">
                         <div className="bg-[#150c19]/70 backdrop-blur-xl border border-rose-300/10 p-8 md:p-16 rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.7)] relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-rose-400/60 to-transparent" />
                             <Feather className="absolute top-6 right-6 text-rose-200/15 w-12 h-12" />
                             <div className="space-y-8 relative z-10">
                                 <div className="text-center mb-8">
-                                    <h3 className={`${THEME.fontHeading} italic text-4xl text-rose-100`}>My Apology & My Promise</h3>
+                                    <h3 className={`${THEME.fontHeading} italic text-4xl text-rose-100`}>My Sorry & My Promises</h3>
                                 </div>
                                 <div className={`${THEME.fontBody} space-y-6 text-rose-50/85 leading-loose font-light text-lg md:text-xl`}>
-                                    <p><Typewriter text="My Dearest Akshu, I know I've hurt you, and I can't put into words how deeply sorry I am for the pain I've caused. Seeing you sad breaks my heart, because you deserve nothing but the purest happiness in this world." delay={18} /></p>
+                                    <p><Typewriter text="Dear Tanvi gaaru, I'm really sorry. My excitement ran way ahead of me, and it made you uncomfortable. That was the last thing I ever wanted." delay={18} /></p>
                                     <p className="animate-in fade-in fill-mode-backwards" style={{ animationDelay: '4.5s', animationDuration: '2s' }}>
-                                        It was my mistake, and I take full responsibility for it. I promise you, from the bottom of my heart, that I will never speak harshly to you again. You are the most beautiful soul I have ever known, inside and out — your kindness, your laughter, and your love are gifts I took for granted, and I'll carry that regret gently until I've earned your trust again.
+                                        I've read everything you said, and I acknowledge all of it. You're not looking for a relationship right now — I know that, and I completely agree with you. Your first project deserves your full focus, and you shouldn't have to spend your energy on small things like this because of me.
                                     </p>
-                                    <p className="animate-in fade-in fill-mode-backwards" style={{ animationDelay: '9s', animationDuration: '2s' }}>
-                                        I love you more than anything in this world, Akshu. Please give me the chance to show you the man I promise to be — patient, present, and endlessly grateful for you. I would be honoured to spend every day making things right.
+                                    <p className="animate-in fade-in fill-mode-backwards" style={{ animationDelay: '7s', animationDuration: '2s' }}>
+                                        I think love is accepting what the person wants — respecting it, and admiring them anyway. So that's exactly what I'll do. And thank you for saying you admire me too; you were one of the first people I got to know at Aiden, and I don't want to lose that bond either.
                                     </p>
+                                    <p className="animate-in fade-in fill-mode-backwards" style={{ animationDelay: '8.5s', animationDuration: '2s' }}>
+                                        And honestly, I'll always love(like) you and care about you — that's just how I feel, and it comes with zero expectations. The way I'll show it is simple: by helping you achieve whatever you want, for as long as I'm in this organization. Starting with the little technical explanation at the top of this page. 🙂
+                                    </p>
+                                    <ul className="animate-in fade-in fill-mode-backwards space-y-2 pl-1" style={{ animationDelay: '10s', animationDuration: '2s' }}>
+                                        <li>🤞 No more back-to-back calls. Pinky promise.</li>
+                                        <li>🫶 I respect your decision, fully.</li>
+                                        <li>💻 Your first project comes first — go rock it.</li>
+                                        <li>🤝 Stuck on anything at work? I'm always happy to help.</li>
+                                        <li>🌸 No pressure, no awkwardness. Just respect.</li>
+                                    </ul>
                                 </div>
                                 <div className="pt-10 text-center animate-in fade-in" style={{ animationDelay: '13s', animationDuration: '2s' }}>
-                                    <p className={`${THEME.fontScript} text-4xl text-rose-200`}>Forever sorry, forever yours,<br />Suprith</p>
+                                    <p className={`${THEME.fontScript} text-4xl text-rose-200`}>With respect, and really sorry,<br />Suprith 🥺</p>
                                     <button onClick={() => setStep(3)}
                                         className={`${THEME.fontBody} mt-12 group inline-flex items-center gap-2 text-rose-100 hover:text-white transition-colors text-lg border-b border-rose-300/30 hover:border-rose-300 pb-1`}>
-                                        <Gift size={18} /> I left one last surprise for you
+                                        <Gift size={18} /> One small thing before you go
                                     </button>
                                 </div>
                             </div>
@@ -447,7 +486,7 @@ export default function App() {
                 )}
 
                 {/* STEP 3: SURPRISE */}
-                {step === 3 && (
+                {view === 'story' && step === 3 && (
                     <>
                         <SurpriseRoom />
                         <button onClick={() => setStep(0)}
@@ -459,7 +498,7 @@ export default function App() {
 
             </main>
 
-            <StepDots step={step} setStep={setStep} />
+            {view === 'story' && <StepDots step={step} setStep={setStep} />}
         </div>
     );
 }
